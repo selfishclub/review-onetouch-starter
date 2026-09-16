@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "check": "tsx scripts/check.ts",
     "login": "tsx scripts/login.ts",
+    "login:agent": "tsx scripts/login-agent.ts",
+    "detect-ids": "tsx scripts/detect-ids.ts",
     "fill": "tsx scripts/fill.ts"
   },
   "dependencies": {

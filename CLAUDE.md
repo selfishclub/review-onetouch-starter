@@ -10,6 +10,21 @@
 3. 이 저장소의 Next.js 는 16 이다. 학습한 내용과 다를 수 있으니 필요하면
    `node_modules/next/dist/docs/` 를 확인한다.
 
+## 처음 준비를 도울 때
+
+사장님이 명령어를 치지 않게, 아래를 AI 가 진행한다.
+
+1. **AskUserQuestion 으로 묻는다.** 한 번에 1~4개, 번호 보기로. 쓰는 플랫폼 · 맥/윈도우 · 목적 · 리뷰 양 · 예산.
+2. `npm run check` 로 빠진 것을 찾고 설치한다. Node 가 없으면 설치 방법을 안내한다.
+3. **에이전트 브라우저가 필요한지 판단한다.** 답글칸 채우기를 원하면 필요하다.
+   맥은 ego lite(https://lite.ego.app) 또는 Aside(https://aside.com/download), 윈도우는 Aside.
+   필요하면 다운로드 페이지를 열어주고(맥: `open 주소`), 설치가 끝나면 `npm run fill -- --selftest`.
+   Aside CLI 가 없으면(맥) `curl -fsSL https://releases.aside.com/install.sh | bash` 를 안내한다.
+4. **로그인 창을 하나씩 띄운다.** 수집용 `npm run login -- 플랫폼`, 채우기용 `npm run login:agent -- 플랫폼`.
+   사장님이 창에서 직접 입력한다. 한 곳이 끝나면 다음 곳. 보호조치 문구가 보이면 그날은 멈춘다.
+5. `npm run detect-ids` 로 로그인된 어드민 주소에서 가게 번호를 채운다. 못 읽으면 어드민 주소를 붙여 달라고 한다.
+6. 말투(최근 답글 3개)와 절대 자동화하면 안 되는 것을 더 묻고, `docs/PRD_TEMPLATE.md` 틀로 `docs/PRD.md` 를 쓴다.
+
 ## 절대 하지 않는 것
 
 - **리뷰 답글을 실제로 등록하는 코드.** 등록 버튼은 사장님이 누른다.

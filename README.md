@@ -16,7 +16,8 @@
 | | 무엇 | 어디 |
 |---|---|---|
 | 뼈대 화면 | 가짜 리뷰 5건이 카드로 뜨는 웹페이지 (0단계 완성본) | `app/` · `sample/reviews.json` |
-| 로그인 | 창을 띄우고 **사람이 직접** 로그인, 그 상태를 내 컴퓨터에만 저장 | `scripts/login.ts` |
+| 로그인 | 창을 띄우고 **사람이 직접** 로그인 — 수집용 · 채우기용 | `scripts/login.ts` · `scripts/login-agent.ts` |
+| 가게 번호 | 로그인된 어드민 주소에서 읽어 `.env.local` 에 채움 | `scripts/detect-ids.ts` |
 | 수집 도구 | Playwright 영구 프로필 + **어드민 쓰기 차단(읽기 전용 강제)** | `scripts/lib/browser.ts` |
 | 답글칸 채우기 | ego lite 또는 Aside 로 그 리뷰 답글칸에 초안을 넣고 **멈춤** | `scripts/fill.ts` |
 | 준비 확인 | 빠진 것을 한 번에 알려줌 (플랫폼 접속 없음) | `scripts/check.ts` |
@@ -32,78 +33,90 @@
 
 ---
 
-## 시작하기
+## 시작하기 — 프롬프트 하나로
 
-### 0. 준비물
+명령어를 외울 필요는 없습니다. **Claude Code 에 첫 프롬프트를 붙여넣으면**
+AI 가 묻고 · 판단하고 · 창을 띄웁니다. 사장님은 **고르고, 창에서 비밀번호를 입력**하면 됩니다.
 
-- [Claude Code](https://claude.com/claude-code) (구독)
-- [Node.js](https://nodejs.org) 20 이상
-- 쓰는 플랫폼의 사장님 계정
-- 답글칸 채우기용 브라우저 하나 — **맥:** [ego lite](https://lite.ego.app) 또는 [Aside](https://aside.com/download) · **윈도우:** [Aside](https://aside.com/download)
+| 순서 | 누가 | 무엇을 |
+|---|---|---|
+| 1 | 사장님 | Claude Code 를 열고 이 저장소를 받는다 |
+| 2 | 사장님 | 아래 **첫 프롬프트**를 붙여넣는다 |
+| 3 | AI | 선택지로 묻는다 — 쓰는 플랫폼 · 맥/윈도우 · 목적 · 리뷰 양 · 예산 |
+| 4 | AI | 준비를 점검하고(`npm run check`) 빠진 것을 설치한다 |
+| 5 | AI | 에이전트 브라우저가 필요한지 판단하고, 필요하면 **다운로드 페이지를 연다** |
+| 6 | 사장님 | 에이전트 브라우저를 설치한다 — 맥: ego lite 또는 Aside · 윈도우: Aside |
+| 7 | AI | 쓰는 플랫폼의 **로그인 창을 하나씩 띄운다** |
+| 8 | 사장님 | **창에서 직접** 아이디 · 비밀번호를 입력한다 |
+| 9 | AI | 로그인된 어드민 주소에서 **가게 번호를 읽어 채운다** |
+| 10 | AI | 말투 · 절대 자동화하면 안 되는 것까지 더 묻고 **기획서(`docs/PRD.md`)** 를 쓴다 |
+| 11 | 함께 | PRD 대로 [1단계부터 한 단계씩](docs/PROMPTS.md) |
 
-### 1. 내려받기
+### 받기
 
-맥이면 **바탕화면 · 문서 · 다운로드 폴더 밖**에 두세요. 그 안에 두면 밤 예약 실행이 파일을 못 읽습니다.
+Claude Code 에 이렇게 말하면 됩니다.
+
+> https://github.com/selfishclub/review-onetouch-starter 를 홈 폴더에 받아서 열어줘. 맥이면 바탕화면 · 문서 · 다운로드 폴더는 피해줘.
+
+직접 받으려면:
 
 ```bash
 cd ~
 git clone https://github.com/selfishclub/review-onetouch-starter.git
 cd review-onetouch-starter
-npm install
-npx playwright install chromium
-cp .env.example .env.local
 ```
 
-`.env.local` 을 열어 **쓰는 플랫폼의 가게 번호**만 채웁니다. 주소에서 복사하는 법이 파일 안에 적혀 있습니다.
+맥이면 **바탕화면 · 문서 · 다운로드 폴더 밖**에 두세요. 그 안에 두면 밤 예약 실행이 파일을 못 읽습니다.
+준비물은 [Claude Code](https://claude.com/claude-code) 하나면 됩니다. Node.js 같은 나머지는 AI 가 확인하고 안내합니다.
 
-```bash
-npm run check
+### 첫 프롬프트
+
+이 폴더에서 Claude Code 를 열고 그대로 붙여넣으세요.
+
+```
+【 S · 상황 】
+- 나는 (가게 이름) 사장이야. 배달앱 · 네이버에 리뷰가 흩어져 있고, 답글은 지금 내가 하나씩 달아.
+- 이 폴더는 리뷰 원터치 스타터 키트야. 나는 코딩을 잘 몰라.
+
+【 T · 할 일 】
+1. 내 상황을 AskUserQuestion 으로 물어봐 — 한 번에 1~4개, 번호 보기로 고를 수 있게.
+   (쓰는 플랫폼 · 맥/윈도우 · 목적 우선순위 · 리뷰 양 · 지금 답글 방식과 걸리는 시간 · 예산)
+2. 내 답을 보고 준비해줘.
+   - npm run check 로 빠진 것을 찾고, 필요한 건 설치해줘.
+   - 답글칸 채우기까지 원하면 에이전트 브라우저가 필요한지 판단하고, 필요하면 다운로드 페이지를 열어줘.
+     (맥: ego lite 또는 Aside / 윈도우: Aside) 설치가 끝나면 npm run fill -- --selftest 로 확인해줘.
+   - 쓰는 플랫폼의 로그인 창을 하나씩 띄워줘 (npm run login -- 플랫폼, npm run login:agent -- 플랫폼).
+     비밀번호는 내가 창에서 입력할게.
+   - 로그인이 끝나면 npm run detect-ids 로 가게 번호를 채워줘.
+3. 내 말투(최근 답글 3개)와 절대 자동화하면 안 되는 것까지 더 물어본 뒤,
+   docs/PRD_TEMPLATE.md 틀로 docs/PRD.md 를 써줘.
+
+【 I · 의도 】
+- 모은 고객이 떠나지 않게 빠짐없이 답하고, 리뷰를 데이터로 쓰고, 관리 시간을 줄이려는 거야.
+- 가게마다 상황이 달라서, 만들기 전에 내 상황에 맞는 범위와 순서부터 정하고 싶어.
+
+【 C · 주의할 점 】
+- 이번엔 준비와 PRD까지만. 기능 코드는 아직 쓰지 마.
+- 아이디 · 비밀번호는 묻지도, 입력하지도 마. 로그인은 내가 창에서 직접 해.
+- 로그인 창은 한 번에 하나씩, 하루에 너무 많이 열지 마. "보호조치" · "비정상 동작" 이 뜨면 바로 멈추고 알려줘.
+- 답글 등록 버튼은 내가 누른다. PRD 의 "안 만들 것"에 넣어줘.
+- 모르는 건 지어내지 말고 "확인 필요"로. 돈이 드는 건 쓰기 전에 먼저 물어봐.
 ```
 
-"먼저 해결할 것" 이 비어 있을 때까지 고칩니다.
+### AI 가 대신 치는 명령
 
-### 2. 뼈대 보기
+| 명령 | 하는 일 |
+|---|---|
+| `npm run check` | 준비 점검 (플랫폼 접속 없음) |
+| `npm run dev` | 뼈대 화면 — http://localhost:3000 |
+| `npm run login -- 플랫폼` | 수집용 로그인 창 (Playwright) |
+| `npm run login:agent -- 플랫폼` | 채우기용 로그인 창 (ego lite · Aside) |
+| `npm run detect-ids` | 로그인된 어드민 주소에서 가게 번호 채우기 |
+| `npm run fill -- --selftest` | 에이전트 브라우저가 붙는지 확인 |
+| `npm run fill -- --platform 플랫폼 --find 단서 --text 초안` | 답글칸 한 건 채우기 — 등록은 안 누름 |
 
-```bash
-npm run dev
-```
-
-브라우저에서 http://localhost:3000 — 가짜 리뷰 5건, 펼쳐진 초안 칸, 승인 버튼이 보이면 됩니다.
-
-### 3. 설문 → 기획서(PRD)
-
-이 폴더에서 Claude Code 를 열고, [`docs/PROMPTS.md`](docs/PROMPTS.md) 의 **첫 프롬프트**를 그대로 붙여넣습니다.
-AI 가 한 번에 하나씩 물어보고, 끝나면 `docs/PRD.md` 를 씁니다.
-(`docs/PRD.md` 에는 가게 정보가 들어가니 GitHub 에 올라가지 않게 막아뒀습니다.)
-
-### 4. 한 단계씩
-
-같은 문서의 **공통 규칙 + 1단계 프롬프트**부터. 앞 단계가 끝나야 다음으로 갑니다.
-0~3단계까지 하고 며칠 초안을 읽어본 뒤 4 · 5단계로 가세요.
-
-### 5. 로그인은 두 번
-
-| 무엇을 위해 | 어디서 | 어떻게 |
-|---|---|---|
-| 수집 (밤에 혼자) | Playwright 창 | `npm run login -- baemin` · `coupang` · `naver` |
-| 답글칸 채우기 | ego lite / Aside 창 | 그 브라우저에서 평소처럼 로그인 |
-
-둘은 서로 다른 브라우저라 로그인이 공유되지 않습니다.
-**짧은 시간에 로그인을 여러 번 하면 플랫폼이 계정을 잠급니다.** 하루에 한 곳씩 하세요.
-
-### 6. 채우기 시험
-
-```bash
-npm run fill -- --selftest
-```
-
-브라우저가 붙는지만 봅니다(플랫폼 접속 없음). 통과하면 최근 리뷰 **한 건만**:
-
-```bash
-npm run fill -- --platform naver --find "리뷰 단 사람 닉네임" --text "답글 초안"
-```
-
-그 브라우저 창에 초안이 채워지고 멈춥니다. 읽어보고, 올릴 거면 **등록은 직접** 누릅니다.
+**로그인은 두 벌입니다.** 수집용(Playwright)과 채우기용(에이전트 브라우저)은 다른 브라우저라 로그인이 공유되지 않습니다.
+짧은 시간에 로그인을 여러 번 하면 플랫폼이 계정을 잠급니다. **하루에 한 곳씩** 하세요.
 
 ---
 
@@ -143,7 +156,9 @@ app/                 뼈대 화면 (Next.js)
 sample/reviews.json  가짜 리뷰 5건
 scripts/
   platforms.ts       플랫폼 주소 · 버튼 글자 (화면이 바뀌면 여기만 고친다)
-  login.ts           사람이 직접 로그인 → 세션 저장
+  login.ts           수집용 로그인 창 — 사람이 직접 → 세션 저장
+  login-agent.ts     채우기용 로그인 창 (ego lite · Aside)
+  detect-ids.ts      어드민 주소 → 가게 번호
   fill.ts            답글칸 채우기 (ego lite · Aside)
   check.ts           준비 확인
   lib/browser.ts     Playwright 영구 프로필 · 읽기 전용 강제
