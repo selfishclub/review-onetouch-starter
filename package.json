@@ -1,0 +1,31 @@
+{
+  "name": "review-onetouch-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "배민 · 쿠팡이츠 · 네이버 리뷰를 한곳에 모으고 답글 초안을 써두는 도구를, 사장님이 AI와 함께 직접 만드는 스타터 키트",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "check": "tsx scripts/check.ts",
+    "login": "tsx scripts/login.ts",
+    "fill": "tsx scripts/fill.ts"
+  },
+  "dependencies": {
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^16.5.0",
+    "playwright": "^1.62.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}

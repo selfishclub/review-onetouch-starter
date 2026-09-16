@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store
+
+# ── 비밀 — 절대 올리지 않기 ──────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── 내 컴퓨터에만 — 로그인 세션 · 수집한 리뷰 · 로그 · 스크린샷 ──
+data/
+
+# ── 내 가게 기획서 — 가게 정보가 들어가니 공개 저장소에 올리지 않기 ──
+docs/PRD.md
