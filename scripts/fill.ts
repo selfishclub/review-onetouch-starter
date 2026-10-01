@@ -18,7 +18,7 @@
  * 쿠팡은 이름을 가려서(김*윤) 동명이인이 생긴다 — docs/PITFALLS.md.
  * 한 번에 한 건만 돌린다. 여러 건을 연달아 돌리면 플랫폼이 막는다.
  */
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import * as fs from 'fs';
 import { PLATFORMS, type PlatformId } from './platforms';
 import { which } from './lib/which';
@@ -158,9 +158,15 @@ const OPEN_STEP = ${J(OPEN_STEP)}, FILL_BOX = ${J(FILL_BOX)}, LANDED = ${J(LANDE
 const call = src => js('(' + src + ')(' + JSON.stringify(P) + ')');
 
 await openOrReuseTab(P.url, { wait: true, timeout: 40 })
-await wait(4)
+// 고정으로 오래 기다리지 않고, 화면이 그려지면 바로 넘어간다 (최대 8초)
+for (let t = 0; t < 20; t++) {
+  if (await js('document.readyState === "complete" && document.body.innerText.length > 300').catch(() => false)) break
+  await wait(0.4)
+}
 
-if (new RegExp(P.loginMarker, 'i').test((await pageInfo()).url)) {
+// 주소는 리뷰 페이지 그대로인데 화면만 로그인 폼으로 바뀌는 곳도 있다 (배민)
+const loginForm = await js('!!document.querySelector("input[type=password]")').catch(() => false)
+if (loginForm || new RegExp(P.loginMarker, 'i').test((await pageInfo()).url)) {
   cliLog('RESULT:' + JSON.stringify({ ok: false, reason: '로그인이 필요합니다. ' + P.browserName + ' 창에서 ' + P.name + '에 로그인해 주세요.' }))
 } else {
   await js(CLOSE_POPUPS).catch(() => {})
@@ -217,7 +223,8 @@ const EGO_PRELUDE = `await useOrCreateTaskSpace('리뷰 답글 채우기 ' + Dat
 /**
  * Aside — REPL 위에 같은 이름을 만든다.
  * · 전역 page 와 겹치지 않게 __page · Aside 의 sleep 은 밀리초
- * · 같은 사이트 탭이 있으면 다시 쓴다 (창이 탭으로 가득 차지 않게)
+ * · 같은 사이트 탭이 있으면 다시 쓴다 (창이 탭으로 가득 차지 않게) — 사람이 보고 있는 탭이 먼저
+ * · 뒤에 오래 둔 탭은 Aside 가 얼려 둬서 붙는 데 30초 넘게 걸리다 실패한다. 8초 안에 못 붙으면 새 탭을 연다
  * · Aside 는 한 번에 2분까지만 돌아서 95초에 스스로 멈춘다
  */
 const ASIDE_PRELUDE = String.raw`
@@ -225,9 +232,18 @@ const __budgetEnd = Date.now() + 95000;
 let __page = null;
 const openOrReuseTab = async (url) => {
   const want = new URL(url);
-  const hit = (await listBrowserTabs()).find(t => { try { return new URL(t.url).host === want.host; } catch (e) { return false; } });
-  if (hit) { __page = await attachBrowserTab(hit.targetId); await __page.goto(url); }
-  else { __page = await openTab(url); }
+  const same = t => { try { return new URL(t.url).host === want.host; } catch (e) { return false; } };
+  const tabs = await listBrowserTabs();
+  const cands = [...tabs.filter(t => t.active && same(t)), ...tabs.filter(t => !t.active && same(t))];
+  const race = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('attach-slow')), ms))]);
+  let reused = false;
+  for (const t of cands.slice(0, 2)) {
+    try { __page = await race(attachBrowserTab(t.targetId), t.active ? 15000 : 8000); reused = true; break; }
+    catch (e) { console.log('  (멈춰 있는 탭이라 건너뜀)'); }
+  }
+  if (!reused) __page = await openTab(url);
+  if (typeof __page.bringToFront === 'function') await __page.bringToFront();
+  if (reused) await __page.goto(url);
   return __page;
 };
 const wait = (sec) => sleep(Math.round(sec * 1000));
@@ -236,6 +252,32 @@ const click = async (pt) => { const [x, y] = Array.isArray(pt) ? pt : [pt.x, pt.
 const pageInfo = async () => ({ url: __page.url() });
 const cliLog = (...a) => console.log(...a);
 `;
+
+/**
+ * Aside 창에서 그 사이트 탭을 앞으로 꺼낸다 (맥만).
+ * REPL 의 bringToFront 는 에이전트 쪽 탭만 바꾸고 창에 보이는 탭은 그대로라,
+ * 쿠팡을 채워도 화면엔 다른 탭이 떠 있는 일이 생긴다. 윈도우는 사람이 탭을 누른다.
+ */
+function showAsideTab(host: string) {
+  if (BROWSER !== 'aside' || process.platform !== 'darwin') return;
+  const script = `
+tell application "Aside"
+  activate
+  repeat with w in windows
+    set i to 0
+    repeat with t in tabs of w
+      set i to i + 1
+      if (URL of t) starts with "https://${host}/" then
+        set active tab index of w to i
+        set index of w to 1
+        return "ok"
+      end if
+    end repeat
+  end repeat
+  return "none"
+end tell`;
+  try { execFileSync('osascript', ['-e', script], { timeout: 5000 }); } catch { /* 못 꺼내도 채우기는 계속한다 */ }
+}
 
 function run(script: string): Promise<Result> {
   return new Promise(resolve => {
@@ -269,6 +311,8 @@ function run(script: string): Promise<Result> {
           ? `${BROWSER_NAME} 창을 사람이 조작 중이라 멈췄습니다. 작업을 끝낸 뒤 다시 실행하세요.`
         : /isn't running|no normal browser window/i.test(out)
           ? `${BROWSER_NAME} 가 꺼져 있거나 창이 없습니다. 앱을 켜고 창을 하나 연 뒤 다시 실행하세요.`
+        : /Page\.enable/i.test(out)
+          ? `${BROWSER_NAME} 탭이 멈춰 있어 붙지 못했습니다. 그 사이트 탭을 한 번 눌러 깨운 뒤 다시 실행하세요.`
         : /timeout|timed out/i.test(out)
           ? '시간이 너무 걸려 멈췄습니다.'
           : `${BROWSER_NAME} 가 응답하지 않았습니다. 앱이 켜져 있는지 확인하세요.`;
@@ -306,6 +350,8 @@ cliLog('RESULT:' + JSON.stringify({ ok: true, card: title + ' @ ' + (await pageI
   }
 
   console.log(`▸ ${p.name} · 단서 "${needle}" · 브라우저 ${BROWSER_NAME}`);
+  const host = new URL(p.reviewsUrl).host;
+  showAsideTab(host);   // 채우는 과정이 사람 눈에 보이게
   const res = await run(body({
     url: p.reviewsUrl,
     name: p.name,
@@ -318,6 +364,7 @@ cliLog('RESULT:' + JSON.stringify({ ok: true, card: title + ' @ ' + (await pageI
     realClick: p.realClick,
     maxScrolls: 20,
   }));
+  showAsideTab(host);
 
   if (res.ok) {
     console.log(`\n  ✅ 채웠습니다 (${res.len}자) — 들어간 카드: "${res.card}"`);

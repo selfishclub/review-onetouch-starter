@@ -141,6 +141,7 @@ cd review-onetouch-starter
 | 윈도우 | Playwright | Aside |
 
 - **수집 = Playwright.** 사람 없이 창 없이 돌고, 어드민에 쓰기 요청을 막을 수 있는 건 Playwright 뿐입니다.
+  네이버만은 Aside 로 수집해도 됩니다 — 로그인이 덜 막힙니다 ([`docs/TOOLS.md`](docs/TOOLS.md)).
 - **채우기 = 에이전트 브라우저.** 평소 쓰는 로그인을 그대로 쓰고, 사람이 보는 앞에서 한 건씩 채웁니다.
 
 직접 설치해 비교한 결과는 [`docs/TOOLS.md`](docs/TOOLS.md) 에 있습니다.
