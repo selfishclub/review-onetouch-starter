@@ -78,7 +78,7 @@ async function main() {
 
   console.log('\n────────────────────────────────');
   if (todo.length === 0) {
-    console.log('✅ 준비 완료. 다음: docs/PROMPTS.md 의 "설문 → PRD" 부터.\n');
+    console.log('✅ 준비 완료. 다음: README 의 첫 프롬프트(기획 질문)부터.\n');
   } else {
     console.log('먼저 해결할 것:');
     todo.forEach((t, i) => console.log(`  ${i + 1}. ${t}`));
