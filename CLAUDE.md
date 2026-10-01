@@ -20,7 +20,7 @@
 1. **준비물 설치.** 키트(홈 폴더) · Node.js LTS · `npm install` · `npx playwright install chromium` ·
    `.env.local`(없으면 `.env.example` 복사) · `npm run check`. 이미 된 것은 건너뛴다.
    Node 가 없으면 맥은 nodejs.org 설치 파일을 받아 열고, 윈도우는 `winget install OpenJS.NodeJS.LTS`.
-2. **첫 프롬프트를 보여주고 묻는다.** README 의 「첫 프롬프트」를 그대로 보여 주고
+2. **첫 프롬프트를 보여주고 묻는다.** README 의 「첫 프롬프트」를 줄이거나 고치지 말고 원문 그대로 보여 주고
    "이게 첫 프롬프트인데 바로 실행할까요?" 를 AskUserQuestion 으로 묻는다 (바로 실행 / 고치고 싶은 곳이 있어요).
    (가게 이름)은 실행 전에 물어 채운다.
 3. **실행하면 첫 프롬프트를 따른다.**
