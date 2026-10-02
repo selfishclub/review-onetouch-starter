@@ -21,8 +21,8 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 /**
- * 0단계 뼈대 — 가짜 리뷰 5건을 카드로 보여준다.
- * 데이터는 sample/reviews.json 한 파일. 2단계에서 DB 를 읽도록 바꾼다.
+ * 화면 뼈대 — 가짜 리뷰 5건을 카드로 보여준다.
+ * 데이터는 sample/reviews.json 한 파일. 1단계에서 우리 가게에 맞추고, 2 · 3단계에서 실제 리뷰 · 창고를 읽도록 바꾼다.
  */
 export default function Home() {
   const [tab, setTab] = useState<Tab>('queue');
@@ -35,9 +35,9 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16">
       <header className="pb-4 pt-8">
-        <p className="text-xs font-medium tracking-widest text-neutral-500">리뷰 원터치 · 0단계 뼈대</p>
+        <p className="text-xs font-medium tracking-widest text-neutral-500">리뷰 원터치 · 화면 뼈대</p>
         <h1 className="mt-1 text-2xl font-bold">오늘 답할 리뷰</h1>
-        <p className="mt-1 text-sm text-neutral-600">지금은 가짜 리뷰입니다. 1단계부터 내 가게 리뷰로 바뀝니다.</p>
+        <p className="mt-1 text-sm text-neutral-600">지금은 가짜 리뷰입니다. 2단계부터 내 가게 리뷰로 바뀝니다.</p>
       </header>
 
       <nav aria-label="탭" className="sticky top-0 z-10 -mx-4 flex gap-1 border-b border-neutral-200 bg-[var(--bg)] px-4">

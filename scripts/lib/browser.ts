@@ -46,13 +46,47 @@ export async function openPersistent(
  * 읽기 전용 강제 — 조회(GET) 말고 모든 요청을 막는다.
  *
  * 수집 중에 무엇이 눌려도 어드민에 전달되지 않는다. 막은 요청 목록을 돌려준다.
- * - 로그인·인증 흐름은 막으면 안 되니 allow 로 통과시킨다.
- * - GraphQL 처럼 조회도 POST 로 하는 곳은, 본문이 query 이고 mutation 이 아닐 때만 통과시킨다.
+ * - 로그인 · 인증 흐름은 막으면 안 되니 통과시킨다. 단, 주소 전체가 아니라
+ *   「호스트 + 경로의 한 마디」가 정확히 login · auth · token 같은 말일 때만 본다.
+ *   (예전에는 주소 어디에든 들어 있으면 통과시켜서 /author/.../reply · ?accessToken= 같은 쓰기 요청이 새어 나갔다)
+ * - 답글 · 댓글 · 신고 · 삭제처럼 쓰기로 보이는 경로는 위에 해당해도 무조건 막는다.
+ * - GraphQL 처럼 조회도 POST 로 하는 곳은, mutation 이 아닌 조회일 때만 통과시킨다.
+ *   본문에 query 가 없고 이름(operationName)만 보내는 방식(persisted query)도 이름이 쓰기 동사가 아니면 조회로 본다.
+ * - 막을 때마다 터미널에 크게 남긴다. 조용히 막으면 「리뷰 0건」으로 보여 원인을 모른다.
  */
-export async function enforceReadOnly(
-  page: Page,
-  allow: RegExp[] = [/login/i, /auth/i, /token/i, /session/i, /captcha/i],
-): Promise<Set<string>> {
+const AUTH_SEGMENT = /^(login|signin|nidlogin|oauth2?|auth|authorize|token|refresh|session|sessions|captcha|sso)$/i;
+const WRITE_PATH = /(reply|replies|comment|comments|answer|report|delete|remove|block|write|register|submit|update|upsert)/i;
+const WRITE_OPERATION = /^(create|update|delete|remove|add|save|submit|register|write|post|reply|upsert|report|block)/i;
+
+function isAuthRequest(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (WRITE_PATH.test(u.pathname)) return false;
+    if (/(^|\.)(nid\.naver\.com|accounts?\.|auth\.|login\.)/i.test(u.hostname)) return true;
+    return u.pathname.split('/').some(seg => AUTH_SEGMENT.test(seg));
+  } catch {
+    return false;
+  }
+}
+
+function isGraphqlRead(url: string, body: string): boolean {
+  if (!/graphql/i.test(url)) return false;
+  let ops: unknown;
+  try {
+    ops = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  const list = Array.isArray(ops) ? ops : [ops];
+  return list.length > 0 && list.every(op => {
+    if (!op || typeof op !== 'object') return false;
+    const o = op as { query?: unknown; operationName?: unknown };
+    if (typeof o.query === 'string') return !/^\s*mutation\b/.test(o.query) && !/\bmutation\s*[({]/.test(o.query);
+    return typeof o.operationName === 'string' && !WRITE_OPERATION.test(o.operationName);
+  });
+}
+
+export async function enforceReadOnly(page: Page, opts: { quiet?: boolean } = {}): Promise<Set<string>> {
   const blocked = new Set<string>();
   await page.route('**/*', async route => {
     const req = route.request();
@@ -60,13 +94,12 @@ export async function enforceReadOnly(
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return route.continue();
 
     const url = req.url();
-    if (allow.some(re => re.test(url))) return route.continue();
+    if (isAuthRequest(url)) return route.continue();
+    if (isGraphqlRead(url, req.postData() || '')) return route.continue();
 
-    const body = req.postData() || '';
-    const graphqlRead = /graphql/i.test(url) && /"query"\s*:/.test(body) && !/\bmutation\b/.test(body);
-    if (graphqlRead) return route.continue();
-
-    blocked.add(`${method} ${url.split('?')[0]}`);
+    const key = `${method} ${url.split('?')[0]}`;
+    if (!blocked.has(key) && !opts.quiet) console.warn(`  ⛔ 쓰기 요청을 막았습니다: ${key}`);
+    blocked.add(key);
     // 앱이 멈추지 않도록 성공한 척 빈 응답을 돌려준다
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });

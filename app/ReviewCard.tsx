@@ -21,7 +21,7 @@ const PLATFORM = {
   naver: { name: '네이버', cls: 'bg-green-50 text-green-800 border-green-200' },
 } as const;
 
-/** 리뷰 한 건 — 초안은 처음부터 펼쳐져 있고, 승인은 표시만 바뀐다 (0단계) */
+/** 리뷰 한 건 — 초안은 처음부터 펼쳐져 있고, 승인은 표시만 바뀐다 (화면 뼈대) */
 export default function ReviewCard({ review }: { review: Review }) {
   const [draft, setDraft] = useState(review.draft);
   const [approved, setApproved] = useState(false);

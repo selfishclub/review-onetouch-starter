@@ -13,8 +13,11 @@
  *   npm run fill -- --selftest                                       브라우저가 붙는지만 (플랫폼 접속 없음)
  *   npm run fill -- --platform naver  --find "닉네임" --text "초안"
  *   npm run fill -- --platform baemin --find "리뷰번호" --text-file draft.txt
+ *   npm run fill -- --platform naver  --find "닉네임" --also "2026.9.30" --also "국물이 진하고" --text "초안"
  *
- * --find 는 그 리뷰 카드에만 있는 글자다. 배민은 리뷰번호, 네이버는 닉네임이 확실하다.
+ * --find 는 그 리뷰 카드에만 있는 글자다. 배민은 리뷰번호가 확실하다.
+ * 네이버 닉네임은 같은 손님이 여러 번 쓰면 겹친다 — --also 로 날짜 · 본문 앞부분을 더 준다.
+ * 단서가 모두 맞는 카드가 딱 하나일 때만 채운다. 둘 이상이면 멈춘다.
  * 쿠팡은 이름을 가려서(김*윤) 동명이인이 생긴다 — docs/PITFALLS.md.
  * 한 번에 한 건만 돌린다. 여러 건을 연달아 돌리면 플랫폼이 막는다.
  */
@@ -37,6 +40,11 @@ function arg(name: string): string | undefined {
   return i > -1 ? process.argv[i + 1] : undefined;
 }
 
+/** 같은 옵션을 여러 번 줄 때 (--also "2026-09-30" --also "국물이 진하고") */
+function args(name: string): string[] {
+  return process.argv.flatMap((a, i) => (a === `--${name}` && process.argv[i + 1] ? [process.argv[i + 1]] : []));
+}
+
 // ── 페이지 안에서 도는 코드 ──────────────────────────────────
 // 문자열로 둔다. 함수로 넘기면 tsx 가 끼워 넣는 도우미 때문에 페이지에서 깨진다.
 // 설정 P 를 인자로 받는다.
@@ -53,20 +61,28 @@ const CLOSE_POPUPS = String.raw`(() => {
 
 /**
  * 그 리뷰 카드에 표시를 달아둔다. 화면 전체에서 버튼을 찾으면 맨 위 리뷰에 쓰게 된다.
- * 단서가 든 가장 작은 조각에서 시작해, 답글 버튼이 들어올 때까지만 부모로 올라간다.
+ * 단서(P.clues — 모두 들어 있어야 함)가 든 조각마다 답글 버튼이 들어올 때까지만 부모로 올라가 카드를 찾는다.
+ * 카드가 둘 이상이면(같은 닉네임 손님이 두 번 쓴 경우 등) 고르지 않고 멈춘다 — 엉뚱한 손님에게 쓰느니 멈추는 게 낫다.
  */
 const MARK_CARD = String.raw`(P => {
   const hasOpener = el => [...el.querySelectorAll('button,a')]
     .some(b => P.openLabels.some(l => (b.innerText || '').includes(l)));
+  const hasAll = el => P.clues.every(c => (el.innerText || '').includes(c));
   const seeds = [...document.querySelectorAll('li,div,article,section,tr')]
-    .filter(e => (e.innerText || '').includes(P.needle) && (e.innerText || '').length < 2000);
-  let el = seeds[seeds.length - 1];
-  if (!el) return null;
-  for (let up = 0; up < 8 && !hasOpener(el); up++) {
-    if (!el.parentElement || (el.parentElement.innerText || '').length > 2600) break;
-    el = el.parentElement;
+    .filter(e => hasAll(e) && (e.innerText || '').length < 2000);
+  const cards = new Set();
+  for (let el of seeds) {
+    for (let up = 0; up < 8 && !hasOpener(el); up++) {
+      if (!el.parentElement || (el.parentElement.innerText || '').length > 2600) break;
+      el = el.parentElement;
+    }
+    if (hasOpener(el)) cards.add(el);
   }
-  if (!hasOpener(el)) return null;
+  // 다른 카드를 품고 있는 바깥 묶음(목록 전체 등)은 빼고, 가장 작은 카드만 센다
+  const list = [...cards].filter(c => ![...cards].some(o => o !== c && c.contains(o)));
+  if (list.length === 0) return null;
+  if (list.length > 1) return { ambiguous: list.length };
+  const el = list[0];
   document.querySelectorAll('[data-onetouch]').forEach(x => x.removeAttribute('data-onetouch'));
   el.setAttribute('data-onetouch', '1');
   el.scrollIntoView({ block: 'center' });
@@ -132,7 +148,7 @@ const FILL_BOX = String.raw`(P => {
 /** 채운 뒤에도 그 카드에 단서가 그대로 있는지 — 엉뚱한 손님에게 남기느니 실패가 낫다 */
 const LANDED = String.raw`(P => {
   const el = document.querySelector('[data-onetouch]');
-  return !!el && (el.innerText || '').includes(P.needle);
+  return !!el && P.clues.every(c => (el.innerText || '').includes(c));
 })`;
 
 interface Config {
@@ -141,6 +157,7 @@ interface Config {
   browserName: string;
   loginMarker: string;
   needle: string;
+  clues: string[];
   text: string;
   openLabels: string[];
   neverClick: string;
@@ -190,6 +207,8 @@ if (loginForm || new RegExp(P.loginMarker, 'i').test((await pageInfo()).url)) {
     const card = await call(MARK_CARD)
     if (!card) {
       cliLog('RESULT:' + JSON.stringify({ ok: false, reason: '이 리뷰의 답글 버튼을 찾지 못했습니다.' }))
+    } else if (typeof card === 'object' && card.ambiguous) {
+      cliLog('RESULT:' + JSON.stringify({ ok: false, reason: '단서가 같은 리뷰가 ' + card.ambiguous + '건이라 고르지 않고 멈췄습니다. 날짜나 본문 앞부분을 --also 로 더 주세요.' }))
     } else {
       const steps = []
       for (let round = 0; round < 3; round++) {
@@ -340,7 +359,7 @@ cliLog('RESULT:' + JSON.stringify({ ok: true, card: title + ' @ ' + (await pageI
   const file = arg('text-file');
   const text = file ? fs.readFileSync(file, 'utf8').trim() : arg('text');
   if (!p || !needle || !text) {
-    console.log('사용법: npm run fill -- --platform baemin|coupang|naver --find "단서" --text "초안"');
+    console.log('사용법: npm run fill -- --platform baemin|coupang|naver --find "단서" [--also "단서2"] --text "초안"');
     console.log('        npm run fill -- --selftest');
     process.exit(1);
   }
@@ -358,6 +377,7 @@ cliLog('RESULT:' + JSON.stringify({ ok: true, card: title + ' @ ' + (await pageI
     browserName: BROWSER_NAME,
     loginMarker: p.loginMarker.source,
     needle,
+    clues: [needle, ...args('also')],
     text,
     openLabels: p.openLabels,
     neverClick: p.neverClick.source,

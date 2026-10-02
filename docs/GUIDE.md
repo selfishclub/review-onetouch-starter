@@ -1,6 +1,6 @@
 # 키트 안내 — 들어 있는 것 · 명령 · 지킬 선
 
-AI 에게 시키는 순서(첫 프롬프트 · 단계 프롬프트)는 [README](../README.md) 에 있습니다. 이 문서는 참고용입니다.
+AI 에게 시키는 순서(기획 · 세팅 · 단계 프롬프트)는 [README](../README.md) 에 있습니다. 이 문서는 참고용입니다.
 
 ---
 
@@ -8,13 +8,13 @@ AI 에게 시키는 순서(첫 프롬프트 · 단계 프롬프트)는 [README](
 
 | | 무엇 | 어디 |
 |---|---|---|
-| 뼈대 화면 | 가짜 리뷰 5건이 카드로 뜨는 웹페이지 (0단계 완성본) | `app/` · `sample/reviews.json` |
+| 뼈대 화면 | 가짜 리뷰 5건이 카드로 뜨는 웹페이지 (세팅이 끝나면 뜨는 화면) | `app/` · `sample/reviews.json` |
 | 로그인 | 창을 띄우고 **사람이 직접** 로그인 — 수집용 · 채우기용 | `scripts/login.ts` · `scripts/login-agent.ts` |
 | 가게 번호 | 로그인된 어드민 주소에서 읽어 `.env.local` 에 채움 | `scripts/detect-ids.ts` |
 | 수집 도구 | Playwright 영구 프로필 + **어드민 쓰기 차단(읽기 전용 강제)** | `scripts/lib/browser.ts` |
 | 답글칸 채우기 | ego lite 또는 Aside 로 그 리뷰 답글칸에 초안을 넣고 **멈춤** | `scripts/fill.ts` |
 | 준비 확인 | 빠진 것을 한 번에 알려줌 (플랫폼 접속 없음) | `scripts/check.ts` |
-| 시키는 순서 | 첫 프롬프트(기획 → 준비 → PRD) → 1~5단계 프롬프트 | [README](../README.md) |
+| 시키는 순서 | 기획(PRD) → 세팅 → 1~6단계 — 하나씩, 끝날 때마다 확인 | [README](../README.md) |
 | 도구 고르기 | 수집은 왜 Playwright, 채우기는 왜 에이전트 브라우저인지 | [`docs/TOOLS.md`](TOOLS.md) |
 | 함정 모음 | 플랫폼마다 실제로 부딪힌 것 | [`docs/PITFALLS.md`](PITFALLS.md) |
 | 기획서 틀 | 기획 질문 뒤에 AI 가 채울 PRD 모양 | [`docs/PRD_TEMPLATE.md`](PRD_TEMPLATE.md) |
@@ -22,7 +22,7 @@ AI 에게 시키는 순서(첫 프롬프트 · 단계 프롬프트)는 [README](
 
 수집기(플랫폼별로 리뷰를 가져오는 코드)는 **일부러 넣지 않았습니다.**
 가게마다 쓰는 플랫폼이 다르고, 어드민 화면도 자주 바뀝니다.
-README 의 1 · 2단계 프롬프트로 AI 가 내 가게에 맞게 만듭니다.
+README 의 2 · 3단계 프롬프트로 AI 가 내 가게에 맞게 만듭니다.
 
 ---
 
